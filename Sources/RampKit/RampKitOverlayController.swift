@@ -684,7 +684,7 @@ public class RampKitOverlayController: UIViewController {
         let direction: UIPageViewController.NavigationDirection = index > currentIndex ? .forward : .reverse
 
         // Track screen navigation event
-        let fromScreen = screens[safe: oldIndex]
+        let fromScreen = oldIndex >= 0 && oldIndex < screens.count ? screens[oldIndex] : nil
         let fromScreenName = fromScreen?.label ?? fromScreen?.id
         let toScreenName = screens[index].label ?? screens[index].id
         EventManager.shared.trackScreenNavigated(
@@ -917,7 +917,7 @@ public class RampKitOverlayController: UIViewController {
         existing?.timer?.invalidate()
 
         // Capture current screen name at time of change (not when event fires)
-        let currentScreen = screens[safe: currentIndex]
+        let currentScreen = currentIndex >= 0 && currentIndex < screens.count ? screens[currentIndex] : nil
         let screenName = existing?.screenName ?? (currentScreen?.label ?? currentScreen?.id)
 
         // Schedule new timer on main thread
