@@ -772,30 +772,49 @@ public class RampKitOverlayController: UIViewController {
             }
             
         case .fade:
-            // Fade transition
+            // True crossfade: both screens animate opacity simultaneously
             isTransitioning = true
-            fadeCurtain.isHidden = false  // Show curtain
-            
-            // Fade curtain in (160ms)
-            UIView.animate(withDuration: 0.16, delay: 0, options: [.curveEaseOut], animations: {
-                self.fadeCurtain.alpha = 1
-            }) { _ in
-                // Switch page instantly
+
+            let containerView = pageController.view!
+
+            // Get the current view
+            guard let currentVC = pageController.viewControllers?.first else {
+                isTransitioning = false
+                return
+            }
+            let currentView = currentVC.view!
+
+            // Add target WebView on top, starting transparent
+            targetWebView.translatesAutoresizingMaskIntoConstraints = true
+            containerView.addSubview(targetWebView)
+            targetWebView.frame = containerView.bounds
+            targetWebView.alpha = 0
+
+            // Crossfade both views simultaneously
+            UIView.animate(
+                withDuration: 0.28,
+                delay: 0,
+                options: [.curveEaseInOut],
+                animations: {
+                    targetWebView.alpha = 1
+                    currentView.alpha = 0
+                }
+            ) { [weak self] _ in
+                guard let self = self else { return }
+
+                // Reset outgoing view for reuse
+                currentView.alpha = 1
+
+                // Remove temporary subview and commit page change
+                targetWebView.removeFromSuperview()
                 self.pageController.setViewControllers(
                     [wrapperVC],
                     direction: direction,
                     animated: false
                 )
-                
+
                 self.currentIndex = index
-                
-                // Fade curtain out (160ms)
-                UIView.animate(withDuration: 0.16, delay: 0, options: [.curveEaseIn], animations: {
-                    self.fadeCurtain.alpha = 0
-                }) { _ in
-                    self.fadeCurtain.isHidden = true  // Hide curtain when done
-                    self.isTransitioning = false
-                }
+                self.isTransitioning = false
             }
         }
         
