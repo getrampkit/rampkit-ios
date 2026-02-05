@@ -300,6 +300,7 @@ public class RampKitCore {
                 requiredScripts: onboardingData.requiredScripts ?? [],
                 context: context,
                 navigation: onboardingData.navigation,
+                components: onboardingData.components,
                 onRequestClose: { [weak self] in
                     self?.handleOverlayClose()
                 },

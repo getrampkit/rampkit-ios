@@ -18,6 +18,7 @@ public class RampKitOverlayController: UIViewController {
     private let requiredScripts: [String]
     private let context: RampKitContext?
     private let navigation: NavigationData?
+    private let components: [String: SDKComponent]?
     
     private let onRequestClose: (() -> Void)?
     private let onOnboardingFinished: ((Any?) -> Void)?
@@ -66,6 +67,7 @@ public class RampKitOverlayController: UIViewController {
         requiredScripts: [String],
         context: RampKitContext?,
         navigation: NavigationData?,
+        components: [String: SDKComponent]?,
         onRequestClose: (() -> Void)?,
         onOnboardingFinished: ((Any?) -> Void)?,
         onShowPaywall: ((Any?) -> Void)?
@@ -76,12 +78,13 @@ public class RampKitOverlayController: UIViewController {
         self.requiredScripts = requiredScripts
         self.context = context
         self.navigation = navigation
+        self.components = components
         self.onRequestClose = onRequestClose
         self.onOnboardingFinished = onOnboardingFinished
         self.onShowPaywall = onShowPaywall
-        
+
         super.init(nibName: nil, bundle: nil)
-        
+
         messageHandler.delegate = self
     }
     
@@ -547,7 +550,8 @@ public class RampKitOverlayController: UIViewController {
             screen: screen,
             variables: sharedVariables,
             requiredScripts: requiredScripts,
-            context: context
+            context: context,
+            components: components
         )
         
         webView.loadHTMLString(html, baseURL: nil)

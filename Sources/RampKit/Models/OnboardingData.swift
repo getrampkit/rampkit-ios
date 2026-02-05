@@ -19,11 +19,21 @@ public struct OnboardingData: Codable {
     
     /// Navigation data for resolving __continue__/__goBack__ based on spatial layout
     public let navigation: NavigationData?
-    
+
+    /// Component definitions map (key -> component)
+    public let components: [String: SDKComponent]?
+
     /// Container for state variables
     public struct VariableContainer: Codable {
         public let state: [OnboardingVariable]?
     }
+}
+
+/// Reusable component definition
+public struct SDKComponent: Codable {
+    public let key: String
+    public let name: String
+    public let html: String
 }
 
 /// Navigation data structure from the editor's spatial layout

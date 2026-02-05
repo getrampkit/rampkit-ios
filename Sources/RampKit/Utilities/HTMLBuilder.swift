@@ -9,14 +9,16 @@ enum HTMLBuilder {
     ///   - variables: State variables from onboarding
     ///   - requiredScripts: External script URLs to include
     ///   - context: Device/User context for template resolution (optional for backwards compatibility)
+    ///   - components: Component definitions for expanding <ramp-component/> tags
     static func buildHTMLDocument(
         screen: ScreenPayload,
         variables: [String: Any],
         requiredScripts: [String],
-        context: RampKitContext? = nil
+        context: RampKitContext? = nil,
+        components: [String: SDKComponent]? = nil
     ) -> String {
         let css = screen.css ?? ""
-        let html = screen.html
+        let html = ComponentExpander.expandHTML(screen.html, components: components)
         let js = screen.js ?? ""
 
         // Build script tags for required external scripts
