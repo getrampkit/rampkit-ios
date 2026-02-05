@@ -5,6 +5,7 @@ struct ComponentOverride: Codable {
     var text: String?
     var src: String?
     var style: String?
+    var action: AnyCodable?
 }
 
 /// Expands <ramp-component/> tags in HTML
@@ -79,6 +80,29 @@ enum ComponentExpander {
                 let pattern = #"(<[^>]*data-ramp-id="\#(fullId)"[^>]*)\ssrc="[^"]*""#
                 expanded = expanded.replacingOccurrences(of: pattern, with: "$1 src=\"\(src)\"", options: .regularExpression)
             }
+
+            if let action = override.action, let tapDynamic = actionToTapDynamic(action) {
+                let escapedTapDynamic = escapeForHtmlAttribute(tapDynamic)
+
+                // Check if element already has data-tap-dynamic
+                let existingPattern = #"(<[^>]*data-ramp-id="\#(fullId)"[^>]*)\sdata-tap-dynamic="[^"]*""#
+                if expanded.range(of: existingPattern, options: .regularExpression) != nil {
+                    // Replace existing data-tap-dynamic
+                    expanded = expanded.replacingOccurrences(
+                        of: existingPattern,
+                        with: "$1 data-tap-dynamic=\"\(escapedTapDynamic)\"",
+                        options: .regularExpression
+                    )
+                } else {
+                    // Add new data-tap-dynamic attribute
+                    let addPattern = #"(<[^>]*data-ramp-id="\#(fullId)")([^>]*>)"#
+                    expanded = expanded.replacingOccurrences(
+                        of: addPattern,
+                        with: "$1 data-tap-dynamic=\"\(escapedTapDynamic)\"$2",
+                        options: .regularExpression
+                    )
+                }
+            }
         }
 
         // 3. Wrap with component marker
@@ -104,5 +128,41 @@ enum ComponentExpander {
               let dict = try? JSONDecoder().decode([String: ComponentOverride].self, from: data) else { return [:] }
 
         return dict
+    }
+
+    /// Convert action to data-tap-dynamic format
+    private static func actionToTapDynamic(_ action: AnyCodable) -> String? {
+        // Normalize to array of actions
+        let actions: [Any]
+        if let array = action.value as? [Any] {
+            actions = array
+        } else if let dict = action.value as? [String: Any] {
+            actions = [dict]
+        } else {
+            return nil
+        }
+
+        let tapDynamic: [String: Any] = [
+            "values": [
+                ["rules": [] as [Any], "actions": actions]
+            ]
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: tapDynamic),
+              let jsonString = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        return jsonString
+    }
+
+    /// Escape string for use in HTML attribute
+    private static func escapeForHtmlAttribute(_ str: String) -> String {
+        return str
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 }
