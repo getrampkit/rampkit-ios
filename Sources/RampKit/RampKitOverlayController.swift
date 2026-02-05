@@ -772,7 +772,8 @@ public class RampKitOverlayController: UIViewController {
             }
             
         case .fade:
-            // True crossfade: both screens animate opacity simultaneously
+            // Snapshot crossfade: capture current screen as opaque image, crossfade to new screen
+            // This avoids background bleed-through that occurs with alpha-based crossfades
             isTransitioning = true
 
             let containerView = pageController.view!
@@ -784,29 +785,40 @@ public class RampKitOverlayController: UIViewController {
             }
             let currentView = currentVC.view!
 
-            // Add target WebView on top, starting transparent
+            // Take a snapshot of current view (fully rasterized, opaque)
+            guard let snapshot = currentView.snapshotView(afterScreenUpdates: false) else {
+                // Fallback: just do instant switch
+                pageController.setViewControllers([wrapperVC], direction: direction, animated: false)
+                currentIndex = index
+                isTransitioning = false
+                return
+            }
+            snapshot.frame = containerView.bounds
+
+            // Add new screen underneath, fully visible
             targetWebView.translatesAutoresizingMaskIntoConstraints = true
             containerView.addSubview(targetWebView)
             targetWebView.frame = containerView.bounds
-            targetWebView.alpha = 0
+            targetWebView.alpha = 1
 
-            // Crossfade both views simultaneously
+            // Add snapshot on top - it covers the new screen initially
+            containerView.addSubview(snapshot)
+
+            // Fade out snapshot to reveal new screen underneath
             UIView.animate(
                 withDuration: 0.28,
                 delay: 0,
                 options: [.curveEaseInOut],
                 animations: {
-                    targetWebView.alpha = 1
-                    currentView.alpha = 0
+                    snapshot.alpha = 0
                 }
             ) { [weak self] _ in
                 guard let self = self else { return }
 
-                // Reset outgoing view for reuse
-                currentView.alpha = 1
-
-                // Remove temporary subview and commit page change
+                // Clean up temporary views
+                snapshot.removeFromSuperview()
                 targetWebView.removeFromSuperview()
+
                 self.pageController.setViewControllers(
                     [wrapperVC],
                     direction: direction,
