@@ -18,7 +18,7 @@ enum HTMLBuilder {
         components: [String: SDKComponent]? = nil
     ) -> String {
         let css = screen.css ?? ""
-        let html = ComponentExpander.expandHTML(screen.html, components: components)
+        let html = extractBodyContent(ComponentExpander.expandHTML(screen.html, components: components))
         let js = screen.js ?? ""
 
         // Build script tags for required external scripts
@@ -163,6 +163,41 @@ enum HTMLBuilder {
         """
     }
     
+    /// Extract body content from a potentially complete HTML document.
+    /// If the screen HTML is a full `<!DOCTYPE html>...<body>...</body></html>` document,
+    /// this strips the outer tags and returns only the body content to prevent
+    /// nested HTML documents that break inline script execution in WKWebView.
+    private static func extractBodyContent(_ html: String) -> String {
+        let trimmed = html.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // If it doesn't look like a complete document, return as-is
+        guard trimmed.lowercased().hasPrefix("<!doctype") || trimmed.lowercased().hasPrefix("<html") else {
+            return html
+        }
+
+        // Try to extract content between <body...> and </body>
+        if let bodyOpenRange = html.range(of: "<body[^>]*>", options: [.regularExpression, .caseInsensitive]),
+           let bodyCloseRange = html.range(of: "</body>", options: [.caseInsensitive, .backwards]) {
+            return String(html[bodyOpenRange.upperBound..<bodyCloseRange.lowerBound])
+        }
+
+        // Fallback: strip document wrapper tags but keep content
+        var result = html
+        if let doctypeRange = result.range(of: "<!doctype[^>]*>", options: [.regularExpression, .caseInsensitive]) {
+            result.removeSubrange(doctypeRange)
+        }
+        result = result.replacingOccurrences(of: "<html[^>]*>", with: "", options: [.regularExpression, .caseInsensitive])
+        result = result.replacingOccurrences(of: "</html>", with: "", options: .caseInsensitive)
+        if let headStart = result.range(of: "<head[^>]*>", options: [.regularExpression, .caseInsensitive]),
+           let headEnd = result.range(of: "</head>", options: .caseInsensitive) {
+            result.removeSubrange(headStart.lowerBound..<headEnd.upperBound)
+        }
+        result = result.replacingOccurrences(of: "<body[^>]*>", with: "", options: [.regularExpression, .caseInsensitive])
+        result = result.replacingOccurrences(of: "</body>", with: "", options: .caseInsensitive)
+
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Generate preconnect and DNS prefetch tags for external scripts
     private static func generatePreconnectTags(from scripts: [String]) -> String {
         // Use dictionary to deduplicate by host

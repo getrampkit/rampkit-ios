@@ -861,26 +861,34 @@ enum InjectedScripts {
             }, true); // Use capture phase to catch all blur events
         }
         
-        // Run resolution
-        if (document.body) {
-            resolveAllTemplates();
-            convertNewlinesInAllText();
-            setupNewlineObserver();
-            setupVariableListener();
-            setupBlurListener();
-        } else {
-            document.addEventListener('DOMContentLoaded', function() {
+        // Run resolution (wrapped in try-catch so rampkitUpdateVariables is always defined)
+        try {
+            if (document.body) {
                 resolveAllTemplates();
                 convertNewlinesInAllText();
                 setupNewlineObserver();
                 setupVariableListener();
                 setupBlurListener();
-            });
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    try {
+                        resolveAllTemplates();
+                        convertNewlinesInAllText();
+                        setupNewlineObserver();
+                        setupVariableListener();
+                        setupBlurListener();
+                    } catch(e2) {
+                        console.error('[RampKit] DOMContentLoaded resolve error:', e2);
+                    }
+                });
+            }
+        } catch(e) {
+            console.error('[RampKit] Template resolve error:', e);
         }
-        
+
         // Mark as resolved
         window.__rampkitTemplatesResolved = true;
-        
+
         // Expose for re-running after dynamic content changes
         window.rampkitResolveTemplates = function() {
             window.__rampkitTemplatesResolved = false;
@@ -888,7 +896,7 @@ enum InjectedScripts {
             convertNewlinesInAllText();
             window.__rampkitTemplatesResolved = true;
         };
-        
+
         // Expose for updating variables programmatically
         window.rampkitUpdateVariables = function(newVars) {
             if (!newVars) return;
@@ -897,10 +905,15 @@ enum InjectedScripts {
             });
             window.__rampkitVariables = stateVars;
             rebuildVars();
-            reResolveTemplates();
+            // If stores are empty (initial scan may have failed), re-scan DOM
+            if (templateStore.length === 0 && attrTemplateStore.length === 0) {
+                resolveAllTemplates();
+            } else {
+                reResolveTemplates();
+            }
         };
-        
-        console.log('✅ RampKit templates resolved', Object.keys(vars).length, 'variables available');
+
+        console.log('[RampKit] Templates resolved, stores: text=' + templateStore.length + ' attr=' + attrTemplateStore.length + ' vars=' + Object.keys(vars).length);
     })();
     """
     
