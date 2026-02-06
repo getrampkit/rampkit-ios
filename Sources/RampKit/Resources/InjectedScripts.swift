@@ -702,7 +702,14 @@ enum InjectedScripts {
                 });
             });
 
-            console.log('[RampKit] Initial scan: stored ' + templateStore.length + ' text templates, ' + attrTemplateStore.length + ' attribute templates');
+            try {
+                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.rampkit) {
+                    window.webkit.messageHandlers.rampkit.postMessage(JSON.stringify({
+                        type: 'rampkit:debug',
+                        message: '[RampKit] Initial scan: stored ' + templateStore.length + ' text templates, ' + attrTemplateStore.length + ' attribute templates'
+                    }));
+                }
+            } catch(e) {}
         }
 
         // Re-resolve all stored templates with updated variables
@@ -723,7 +730,14 @@ enum InjectedScripts {
                 }
             });
 
-            console.log('[RampKit] Re-resolved ' + templateStore.length + ' text templates, ' + attrTemplateStore.length + ' attribute templates');
+            try {
+                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.rampkit) {
+                    window.webkit.messageHandlers.rampkit.postMessage(JSON.stringify({
+                        type: 'rampkit:debug',
+                        message: '[RampKit] Re-resolved ' + templateStore.length + ' text templates, ' + attrTemplateStore.length + ' attribute templates'
+                    }));
+                }
+            } catch(e) {}
         }
         
         // Convert literal \\n strings in any text node to actual line breaks
@@ -901,18 +915,31 @@ enum InjectedScripts {
             window.__rampkitTemplatesResolved = true;
         };
 
+        // Helper to send diagnostic messages to native (shows in Xcode console)
+        function sendDiagnostic(msg) {
+            console.log(msg);
+            try {
+                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.rampkit) {
+                    window.webkit.messageHandlers.rampkit.postMessage(JSON.stringify({
+                        type: 'rampkit:debug',
+                        message: msg
+                    }));
+                }
+            } catch(e) {}
+        }
+
         // Expose for updating variables programmatically
         window.rampkitUpdateVariables = function(newVars) {
             if (!newVars) return;
 
             // Wait for initial resolution to complete
             if (!window.__rampkitTemplatesResolved) {
-                console.log('[RampKit] Waiting for initial resolution...');
+                sendDiagnostic('[RampKit] Waiting for initial resolution...');
                 setTimeout(function() { window.rampkitUpdateVariables(newVars); }, 100);
                 return;
             }
 
-            console.log('[RampKit] rampkitUpdateVariables called:', Object.keys(newVars));
+            sendDiagnostic('[RampKit] rampkitUpdateVariables called: ' + JSON.stringify(Object.keys(newVars)));
 
             Object.keys(newVars).forEach(function(key) {
                 stateVars[key] = newVars[key];
@@ -920,22 +947,22 @@ enum InjectedScripts {
             window.__rampkitVariables = stateVars;
             rebuildVars();
 
-            console.log('[RampKit] Variables after rebuild:', JSON.stringify(vars));
-            console.log('[RampKit] Template stores: text=' + templateStore.length + ', attr=' + attrTemplateStore.length);
+            sendDiagnostic('[RampKit] Variables after rebuild: ' + JSON.stringify(vars));
+            sendDiagnostic('[RampKit] Template stores: text=' + templateStore.length + ', attr=' + attrTemplateStore.length);
 
             // If stores are empty (initial scan may have failed), re-scan DOM
             if (templateStore.length === 0 && attrTemplateStore.length === 0) {
-                console.log('[RampKit] No templates stored, re-scanning...');
+                sendDiagnostic('[RampKit] No templates stored, re-scanning...');
                 resolveAllTemplates();
             } else {
-                console.log('[RampKit] Re-resolving ' + (templateStore.length + attrTemplateStore.length) + ' templates...');
+                sendDiagnostic('[RampKit] Re-resolving ' + (templateStore.length + attrTemplateStore.length) + ' templates...');
                 reResolveTemplates();
             }
 
-            console.log('[RampKit] Re-resolution complete');
+            sendDiagnostic('[RampKit] Re-resolution complete');
         };
 
-        console.log('[RampKit] Templates resolved, stores: text=' + templateStore.length + ' attr=' + attrTemplateStore.length + ' vars=' + Object.keys(vars).length);
+        sendDiagnostic('[RampKit] Templates resolved, stores: text=' + templateStore.length + ' attr=' + attrTemplateStore.length + ' vars=' + Object.keys(vars).length);
     })();
     """
     

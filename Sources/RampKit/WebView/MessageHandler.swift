@@ -118,7 +118,7 @@ class RampKitMessageHandler {
             
         case "rampkit:debug":
             let message = json["message"] as? String ?? "no message"
-            RampKitLogger.verbose("DynTap", message)
+            print("[RampKit Template Debug] \(message)")
 
         case "rampkit:input-blur":
             if let variableName = json["variableName"] as? String {
