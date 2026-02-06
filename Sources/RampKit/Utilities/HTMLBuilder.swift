@@ -165,8 +165,8 @@ enum HTMLBuilder {
     
     /// Extract body content from a potentially complete HTML document.
     /// If the screen HTML is a full `<!DOCTYPE html>...<body>...</body></html>` document,
-    /// this strips the outer tags and returns only the body content to prevent
-    /// nested HTML documents that break inline script execution in WKWebView.
+    /// this strips the outer document tags but preserves `<style>` and `<link>` tags
+    /// from the `<head>` section so CSS is not lost.
     private static func extractBodyContent(_ html: String) -> String {
         let trimmed = html.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -175,23 +175,47 @@ enum HTMLBuilder {
             return html
         }
 
-        // Try to extract content between <body...> and </body>
-        if let bodyOpenRange = html.range(of: "<body[^>]*>", options: [.regularExpression, .caseInsensitive]),
-           let bodyCloseRange = html.range(of: "</body>", options: [.caseInsensitive, .backwards]) {
-            return String(html[bodyOpenRange.upperBound..<bodyCloseRange.lowerBound])
+        // Extract <style> and <link> tags from <head> so we don't lose CSS
+        var headStyles = ""
+        if let headStart = html.range(of: "<head[^>]*>", options: [.regularExpression, .caseInsensitive]),
+           let headEnd = html.range(of: "</head>", options: .caseInsensitive) {
+            let headContent = String(html[headStart.upperBound..<headEnd.lowerBound])
+            // Keep <style>...</style> blocks
+            if let styleRegex = try? NSRegularExpression(pattern: "<style[^>]*>[\\s\\S]*?</style>", options: .caseInsensitive) {
+                let matches = styleRegex.matches(in: headContent, range: NSRange(headContent.startIndex..., in: headContent))
+                for match in matches {
+                    if let range = Range(match.range, in: headContent) {
+                        headStyles += String(headContent[range]) + "\n"
+                    }
+                }
+            }
+            // Keep <link> tags (external stylesheets)
+            if let linkRegex = try? NSRegularExpression(pattern: "<link[^>]*>", options: .caseInsensitive) {
+                let matches = linkRegex.matches(in: headContent, range: NSRange(headContent.startIndex..., in: headContent))
+                for match in matches {
+                    if let range = Range(match.range, in: headContent) {
+                        headStyles += String(headContent[range]) + "\n"
+                    }
+                }
+            }
         }
 
-        // Fallback: strip document wrapper tags but keep content
+        // Extract content between <body...> and </body>
+        if let bodyOpenRange = html.range(of: "<body[^>]*>", options: [.regularExpression, .caseInsensitive]),
+           let bodyCloseRange = html.range(of: "</body>", options: [.caseInsensitive, .backwards]) {
+            let bodyContent = String(html[bodyOpenRange.upperBound..<bodyCloseRange.lowerBound])
+            return headStyles + bodyContent
+        }
+
+        // Fallback: strip only the document structure tags, keep everything else
         var result = html
         if let doctypeRange = result.range(of: "<!doctype[^>]*>", options: [.regularExpression, .caseInsensitive]) {
             result.removeSubrange(doctypeRange)
         }
         result = result.replacingOccurrences(of: "<html[^>]*>", with: "", options: [.regularExpression, .caseInsensitive])
         result = result.replacingOccurrences(of: "</html>", with: "", options: .caseInsensitive)
-        if let headStart = result.range(of: "<head[^>]*>", options: [.regularExpression, .caseInsensitive]),
-           let headEnd = result.range(of: "</head>", options: .caseInsensitive) {
-            result.removeSubrange(headStart.lowerBound..<headEnd.upperBound)
-        }
+        result = result.replacingOccurrences(of: "<head[^>]*>", with: "", options: [.regularExpression, .caseInsensitive])
+        result = result.replacingOccurrences(of: "</head>", with: "", options: .caseInsensitive)
         result = result.replacingOccurrences(of: "<body[^>]*>", with: "", options: [.regularExpression, .caseInsensitive])
         result = result.replacingOccurrences(of: "</body>", with: "", options: .caseInsensitive)
 
