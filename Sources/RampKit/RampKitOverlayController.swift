@@ -416,6 +416,35 @@ public class RampKitOverlayController: UIViewController {
                                     sendDiag('Sending variable update: ' + JSON.stringify(updateVars));
                                 }
                                 break;
+                            case 'addclass':
+                                if (action.class) {
+                                    var targets = action.selector ? document.querySelectorAll(action.selector) : [window.__rampkitCurrentTapElement];
+                                    targets.forEach(function(el) { if (el) el.classList.add(action.class); });
+                                }
+                                break;
+                            case 'removeclass':
+                                if (action.class) {
+                                    var targets = action.selector ? document.querySelectorAll(action.selector) : [window.__rampkitCurrentTapElement];
+                                    targets.forEach(function(el) { if (el) el.classList.remove(action.class); });
+                                }
+                                break;
+                            case 'toggleclass':
+                                if (action.class) {
+                                    var targets = action.selector ? document.querySelectorAll(action.selector) : [window.__rampkitCurrentTapElement];
+                                    targets.forEach(function(el) { if (el) el.classList.toggle(action.class); });
+                                }
+                                break;
+                            case 'selectone':
+                                // Radio-button behavior: remove class from all, add to tapped
+                                if (action.class && action.selector) {
+                                    document.querySelectorAll(action.selector).forEach(function(el) {
+                                        el.classList.remove(action.class);
+                                    });
+                                    if (window.__rampkitCurrentTapElement) {
+                                        window.__rampkitCurrentTapElement.classList.add(action.class);
+                                    }
+                                }
+                                break;
                             default:
                                 sendDiag('Unknown action type: ' + action.type);
                         }
@@ -466,6 +495,8 @@ public class RampKitOverlayController: UIViewController {
                     
                     // Click interceptor - capture phase, runs BEFORE onclick handlers
                     function interceptClick(event) {
+                        // Store tapped element for CSS class actions
+                        window.__rampkitCurrentTapElement = event.target;
                         sendDiag('Click on: ' + event.target.tagName + ' ' + (event.target.className || ''));
                         var result = findDynamicTap(event.target);
                         if (!result) {

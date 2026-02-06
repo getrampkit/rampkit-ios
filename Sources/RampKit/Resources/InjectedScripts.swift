@@ -238,11 +238,47 @@ enum InjectedScripts {
                         }
                     }
                     return; // Don't send message for URL open
-                    
+
+                case 'addClass':
+                    // Add class to elements matching selector (or tapped element)
+                    if (action.class) {
+                        var targets = action.selector ? document.querySelectorAll(action.selector) : [window.__rampkitCurrentTapElement];
+                        targets.forEach(function(el) { if (el) el.classList.add(action.class); });
+                    }
+                    return;
+
+                case 'removeClass':
+                    // Remove class from elements matching selector (or tapped element)
+                    if (action.class) {
+                        var targets = action.selector ? document.querySelectorAll(action.selector) : [window.__rampkitCurrentTapElement];
+                        targets.forEach(function(el) { if (el) el.classList.remove(action.class); });
+                    }
+                    return;
+
+                case 'toggleClass':
+                    // Toggle class on elements matching selector (or tapped element)
+                    if (action.class) {
+                        var targets = action.selector ? document.querySelectorAll(action.selector) : [window.__rampkitCurrentTapElement];
+                        targets.forEach(function(el) { if (el) el.classList.toggle(action.class); });
+                    }
+                    return;
+
+                case 'selectOne':
+                    // Radio-button behavior: remove class from all matching selector, add to tapped element
+                    if (action.class && action.selector) {
+                        document.querySelectorAll(action.selector).forEach(function(el) {
+                            el.classList.remove(action.class);
+                        });
+                        if (window.__rampkitCurrentTapElement) {
+                            window.__rampkitCurrentTapElement.classList.add(action.class);
+                        }
+                    }
+                    return;
+
                 case 'none':
                     // Do nothing
                     return;
-                    
+
                 default:
                     console.log('[RampKit] Unknown action type:', action.type);
                     return;
@@ -337,7 +373,10 @@ enum InjectedScripts {
                 console.log('[RampKit] handleDynamicTap: No element provided');
                 return false;
             }
-            
+
+            // Store the tapped element for use by class manipulation actions
+            window.__rampkitCurrentTapElement = element;
+
             console.log('[RampKit] handleDynamicTap called on:', element.tagName, element.className);
             
             // Check for data-tap-dynamic attribute
@@ -648,7 +687,7 @@ enum InjectedScripts {
             });
             
             // Also resolve templates in attribute values (e.g., src, href, alt, title, placeholder)
-            var attributesToCheck = ['src', 'href', 'alt', 'title', 'placeholder', 'value', 'data-text'];
+            var attributesToCheck = ['src', 'href', 'alt', 'title', 'placeholder', 'value', 'data-text', 'class'];
             var elements = document.querySelectorAll('*');
             
             elements.forEach(function(el) {
