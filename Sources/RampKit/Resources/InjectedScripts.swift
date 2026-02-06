@@ -222,6 +222,7 @@ enum InjectedScripts {
                         // Notify native side
                         var updateVars = {};
                         updateVars[action.key] = action.value;
+                        if (typeof window.rampkitUpdateVariables === 'function') window.rampkitUpdateVariables(updateVars);
                         message = {
                             type: 'rampkit:variables',
                             vars: updateVars
@@ -1058,6 +1059,7 @@ enum InjectedScripts {
                     // Notify native
                     var vars = {};
                     vars[action.key] = action.value;
+                    if (typeof window.rampkitUpdateVariables === 'function') window.rampkitUpdateVariables(vars);
                     sendMessage({ type: 'rampkit:variables', vars: vars, fromOnOpen: true });
                 }
                 executeActions(actionList, index + 1);
