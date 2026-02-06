@@ -527,6 +527,20 @@ public class RampKitOverlayController: UIViewController {
                     
                     // Install interceptor on window in capture phase
                     window.addEventListener('click', interceptClick, true);
+
+                    // DIAGNOSTIC: Log ALL touches to debug missing clicks
+                    window.addEventListener('touchstart', function(e) {
+                        if (e.target) {
+                            sendDiag('TOUCH on: ' + e.target.tagName + ' ' + (e.target.className || '') + ' id=' + (e.target.id || 'none'));
+                        }
+                    }, true);
+
+                    window.addEventListener('touchend', function(e) {
+                        if (e.target) {
+                            sendDiag('TOUCHEND on: ' + e.target.tagName + ' ' + (e.target.className || ''));
+                        }
+                    }, true);
+
                     sendDiag('Click interceptor installed');
                 })();
                 """,
