@@ -681,10 +681,6 @@ enum InjectedScripts {
                 if (resolved !== original) {
                     // Store original template for later re-resolution
                     templateStore.push({ node: textNode, original: original });
-                    // Also store in DOM data attribute so WKUserScript can access it
-                    if (textNode.parentNode && textNode.parentNode.setAttribute) {
-                        textNode.parentNode.setAttribute('data-rk-ot', original);
-                    }
                     textNode.textContent = resolved;
                     // Process newlines after setting content
                     processTextNodeForNewlines(textNode);
@@ -701,18 +697,14 @@ enum InjectedScripts {
                     if (attrValue && attrValue.indexOf('${') !== -1) {
                         // Store original for re-resolution
                         attrTemplateStore.push({ element: el, attr: attrName, original: attrValue });
-                        // Also store in DOM data attribute so WKUserScript can access it
-                        if (attrName === 'class') {
-                            el.setAttribute('data-rk-oc', attrValue);
-                        } else {
-                            el.setAttribute('data-rk-oa-' + attrName, attrValue);
-                        }
                         el.setAttribute(attrName, resolveTemplate(attrValue));
                     }
                 });
             });
+
+            console.log('[RampKit] Initial scan: stored ' + templateStore.length + ' text templates, ' + attrTemplateStore.length + ' attribute templates');
         }
-        
+
         // Re-resolve all stored templates with updated variables
         function reResolveTemplates() {
             // Re-resolve text nodes
@@ -730,6 +722,8 @@ enum InjectedScripts {
                     item.element.setAttribute(item.attr, resolveTemplate(item.original));
                 }
             });
+
+            console.log('[RampKit] Re-resolved ' + templateStore.length + ' text templates, ' + attrTemplateStore.length + ' attribute templates');
         }
         
         // Convert literal \\n strings in any text node to actual line breaks
@@ -910,17 +904,35 @@ enum InjectedScripts {
         // Expose for updating variables programmatically
         window.rampkitUpdateVariables = function(newVars) {
             if (!newVars) return;
+
+            // Wait for initial resolution to complete
+            if (!window.__rampkitTemplatesResolved) {
+                console.log('[RampKit] Waiting for initial resolution...');
+                setTimeout(function() { window.rampkitUpdateVariables(newVars); }, 100);
+                return;
+            }
+
+            console.log('[RampKit] rampkitUpdateVariables called:', Object.keys(newVars));
+
             Object.keys(newVars).forEach(function(key) {
                 stateVars[key] = newVars[key];
             });
             window.__rampkitVariables = stateVars;
             rebuildVars();
+
+            console.log('[RampKit] Variables after rebuild:', JSON.stringify(vars));
+            console.log('[RampKit] Template stores: text=' + templateStore.length + ', attr=' + attrTemplateStore.length);
+
             // If stores are empty (initial scan may have failed), re-scan DOM
             if (templateStore.length === 0 && attrTemplateStore.length === 0) {
+                console.log('[RampKit] No templates stored, re-scanning...');
                 resolveAllTemplates();
             } else {
+                console.log('[RampKit] Re-resolving ' + (templateStore.length + attrTemplateStore.length) + ' templates...');
                 reResolveTemplates();
             }
+
+            console.log('[RampKit] Re-resolution complete');
         };
 
         console.log('[RampKit] Templates resolved, stores: text=' + templateStore.length + ' attr=' + attrTemplateStore.length + ' vars=' + Object.keys(vars).length);

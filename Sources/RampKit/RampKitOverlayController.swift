@@ -350,77 +350,6 @@ public class RampKitOverlayController: UIViewController {
                         return true;
                     }
                     
-                    // Self-contained template resolver (doesn't depend on inline IIFE)
-                    // Stores originals in data-rk-oc (class) and data-rk-ot (text) attributes
-                    function rkResolveValue(val, vars) {
-                        if (!val) return '';
-                        val = val.trim();
-                        var sq = val.match(/^'(.*)'$/); if (sq) return sq[1];
-                        var dq = val.match(/^"(.*)"$/); if (dq) return dq[1];
-                        if (/^[A-Za-z_]\\w*$/.test(val)) { var v = vars[val]; return v !== undefined && v !== null ? String(v) : ''; }
-                        return val;
-                    }
-                    function rkResolveExpr(text, vars) {
-                        if (!text || text.indexOf('${') === -1) return text;
-                        return text.replace(/\\$\\{([^}]+)\\}/g, function(m, expr) {
-                            expr = expr.trim();
-                            if (/^[A-Za-z_]\\w*$/.test(expr)) {
-                                var v = vars[expr]; return v !== undefined && v !== null ? String(v) : '';
-                            }
-                            var qi = expr.indexOf('?'), ci = expr.indexOf(':');
-                            if (qi > 0 && ci > qi) {
-                                var cond = expr.substring(0, qi).trim();
-                                var rest = expr.substring(qi + 1);
-                                var rci = rest.indexOf(':');
-                                if (rci >= 0) {
-                                    var tv = rkResolveValue(rest.substring(0, rci).trim(), vars);
-                                    var fv = rkResolveValue(rest.substring(rci + 1).trim(), vars);
-                                    var eqm = cond.match(/^([A-Za-z_]\\w*)\\s*==\\s*(.+)$/);
-                                    if (eqm) { var vv = vars[eqm[1]] !== undefined ? String(vars[eqm[1]]) : ''; return vv === rkResolveValue(eqm[2], vars) ? tv : fv; }
-                                    var nem = cond.match(/^([A-Za-z_]\\w*)\\s*!=\\s*(.+)$/);
-                                    if (nem) { var vv = vars[nem[1]] !== undefined ? String(vars[nem[1]]) : ''; return vv !== rkResolveValue(nem[2], vars) ? tv : fv; }
-                                }
-                            }
-                            return '';
-                        });
-                    }
-                    function reResolveAllTemplates() {
-                        var vars = getVars();
-                        // First call: store originals in data attributes
-                        var hasStored = document.querySelector('[data-rk-oc]');
-                        if (!hasStored) {
-                            document.querySelectorAll('*').forEach(function(el) {
-                                var cls = el.getAttribute('class');
-                                if (cls && cls.indexOf('${') !== -1) {
-                                    el.setAttribute('data-rk-oc', cls);
-                                }
-                            });
-                            // Store text originals
-                            var walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT, null, false);
-                            var tn;
-                            while (tn = walker.nextNode()) {
-                                if (tn.textContent && tn.textContent.indexOf('${') !== -1 && tn.parentNode) {
-                                    tn.parentNode.setAttribute('data-rk-ot', tn.textContent);
-                                }
-                            }
-                        }
-                        // Re-resolve class attributes
-                        document.querySelectorAll('[data-rk-oc]').forEach(function(el) {
-                            el.setAttribute('class', rkResolveExpr(el.getAttribute('data-rk-oc'), vars));
-                        });
-                        // Re-resolve text
-                        document.querySelectorAll('[data-rk-ot]').forEach(function(el) {
-                            var orig = el.getAttribute('data-rk-ot');
-                            // Find the text node child and update it
-                            for (var i = 0; i < el.childNodes.length; i++) {
-                                if (el.childNodes[i].nodeType === 3) {
-                                    el.childNodes[i].textContent = rkResolveExpr(orig, vars);
-                                    break;
-                                }
-                            }
-                        });
-                        sendDiag('reResolveAllTemplates done, vars=' + JSON.stringify(vars));
-                    }
 
                     // Execute an action
                     function execAction(action) {
@@ -485,7 +414,6 @@ public class RampKitOverlayController: UIViewController {
                                     var updateVars = {};
                                     updateVars[varKey] = varValue;
                                     if (typeof window.rampkitUpdateVariables === 'function') window.rampkitUpdateVariables(updateVars);
-                                    reResolveAllTemplates();
                                     msg = { type: 'rampkit:variables', vars: updateVars };
                                     sendDiag('Sending variable update: ' + JSON.stringify(updateVars));
                                 }
