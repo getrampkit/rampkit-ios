@@ -538,8 +538,14 @@ public class RampKitOverlayController: UIViewController {
                     window.addEventListener('touchend', function(e) {
                         if (e.target) {
                             sendDiag('TOUCHEND on: ' + e.target.tagName + ' ' + (e.target.className || ''));
+                            sendDiag('TOUCHEND defaultPrevented=' + e.defaultPrevented + ' cancelable=' + e.cancelable);
                         }
                     }, true);
+
+                    // DIAGNOSTIC: Check if click events fire at all (in BUBBLE phase, after all handlers)
+                    window.addEventListener('click', function(e) {
+                        sendDiag('RAW CLICK detected on: ' + e.target.tagName + ' ' + (e.target.className || ''));
+                    }, false); // Bubble phase - runs AFTER our capture interceptor
 
                     sendDiag('Click interceptor installed');
                 })();
