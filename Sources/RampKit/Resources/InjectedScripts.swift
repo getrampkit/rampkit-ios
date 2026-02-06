@@ -681,6 +681,10 @@ enum InjectedScripts {
                 if (resolved !== original) {
                     // Store original template for later re-resolution
                     templateStore.push({ node: textNode, original: original });
+                    // Also store in DOM data attribute so WKUserScript can access it
+                    if (textNode.parentNode && textNode.parentNode.setAttribute) {
+                        textNode.parentNode.setAttribute('data-rk-ot', original);
+                    }
                     textNode.textContent = resolved;
                     // Process newlines after setting content
                     processTextNodeForNewlines(textNode);
@@ -697,6 +701,12 @@ enum InjectedScripts {
                     if (attrValue && attrValue.indexOf('${') !== -1) {
                         // Store original for re-resolution
                         attrTemplateStore.push({ element: el, attr: attrName, original: attrValue });
+                        // Also store in DOM data attribute so WKUserScript can access it
+                        if (attrName === 'class') {
+                            el.setAttribute('data-rk-oc', attrValue);
+                        } else {
+                            el.setAttribute('data-rk-oa-' + attrName, attrValue);
+                        }
                         el.setAttribute(attrName, resolveTemplate(attrValue));
                     }
                 });
