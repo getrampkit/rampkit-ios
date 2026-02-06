@@ -528,6 +528,27 @@ public class RampKitOverlayController: UIViewController {
                     // Install interceptor on window in capture phase
                     window.addEventListener('click', interceptClick, true);
 
+                    // CRITICAL: Also handle touchend for DIV elements (WKWebView doesn't generate clicks for them)
+                    var touchStartTarget = null;
+                    var touchStartTime = 0;
+
+                    window.addEventListener('touchstart', function(e) {
+                        touchStartTarget = e.target;
+                        touchStartTime = Date.now();
+                    }, true);
+
+                    window.addEventListener('touchend', function(e) {
+                        // Only treat as click if touchend is on same element as touchstart
+                        // and happened within 500ms (not a long press or scroll)
+                        var timeDiff = Date.now() - touchStartTime;
+                        if (e.target === touchStartTarget && timeDiff < 500) {
+                            sendDiag('TOUCHEND-TO-CLICK conversion');
+                            // Manually call our click handler
+                            interceptClick({ target: e.target, preventDefault: function() { e.preventDefault(); }, stopImmediatePropagation: function() { e.stopImmediatePropagation(); } });
+                        }
+                        touchStartTarget = null;
+                    }, true);
+
                     // DIAGNOSTIC: Log ALL touches to debug missing clicks
                     window.addEventListener('touchstart', function(e) {
                         if (e.target) {
