@@ -744,7 +744,8 @@ enum InjectedScripts {
         function processTextNodeForNewlines(textNode) {
             var text = textNode.textContent;
             if (!text) return false;
-            
+            if (text.trim() === '') return false;  // Skip HTML formatting whitespace
+
             // Check if this text contains any newline patterns
             if (text.indexOf(BACKSLASH_N) === -1 && text.indexOf('\\n') === -1) {
                 return false;

@@ -18,7 +18,7 @@ enum DeviceInfoCollector {
     // MARK: - SDK Version
     
     /// Current RampKit SDK version
-    static let sdkVersion = "0.0.113"
+    static let sdkVersion = "0.0.114"
     
     // MARK: - Cached Values (computed once)
     
